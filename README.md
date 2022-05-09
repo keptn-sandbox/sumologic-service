@@ -1,3 +1,4 @@
+# Note: This repo is WIP (not usable yet)
 # README
 
 **BEFORE YOU START**, please be aware that there are more ways to integrate with your service that don't require creating a service from this template, see https://keptn.sh/docs/0.10.x/integrations/how_integrate/ for more details.
