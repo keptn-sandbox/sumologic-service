@@ -13,6 +13,7 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2" // make sure to use v2 cloudevents here
 	"github.com/kelseyhightower/envconfig"
+	"github.com/keptn-sandbox/sumologic-service/pkg/utils"
 	keptnlib "github.com/keptn/go-utils/pkg/lib"
 	keptn "github.com/keptn/go-utils/pkg/lib/keptn"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
@@ -37,7 +38,7 @@ type envConfig struct {
 }
 
 // ServiceName specifies the current services name (e.g., used as source when sending CloudEvents)
-const ServiceName = "keptn-service-template-go"
+const ServiceName = "sumologic-service"
 
 /**
  * Parses a Keptn Cloud Event payload (data attribute)
@@ -139,22 +140,6 @@ func processKeptnCloudEvent(ctx context.Context, event cloudevents.Event) error 
 		parseKeptnCloudEventPayload(event, eventData)
 
 		return HandleConfigureMonitoringTriggeredEvent(myKeptn, event, eventData)
-	case keptnv2.GetStartedEventType(keptnv2.ConfigureMonitoringTaskName): // sh.keptn.event.configure-monitoring.started
-		log.Printf("Processing configure-monitoring.Started Event")
-
-		eventData := &keptnv2.ConfigureMonitoringStartedEventData{}
-		parseKeptnCloudEventPayload(event, eventData)
-
-		// Just log this event
-		return GenericLogKeptnCloudEventHandler(myKeptn, event, eventData)
-	case keptnv2.GetFinishedEventType(keptnv2.ConfigureMonitoringTaskName): // sh.keptn.event.configure-monitoring.finished
-		log.Printf("Processing configure-monitoring.Finished Event")
-
-		eventData := &keptnv2.ConfigureMonitoringFinishedEventData{}
-		parseKeptnCloudEventPayload(event, eventData)
-
-		// Just log this event
-		return GenericLogKeptnCloudEventHandler(myKeptn, event, eventData)
 	}
 
 	// Unknown Event -> Throw Error!
@@ -174,7 +159,7 @@ func processKeptnCloudEvent(ctx context.Context, event cloudevents.Event) error 
 func main() {
 	logger.SetFormatter(&utils.Formatter{
 		Fields: logger.Fields{
-			"service":      "datadog-service",
+			"service":      "sumologic-service",
 			"eventId":      "",
 			"keptnContext": "",
 		},

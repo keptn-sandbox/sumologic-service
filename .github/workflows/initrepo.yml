@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
 
 env:
-  ORIGINAL_IMAGE_NAME: ghcr.io/keptn-sandbox/keptn-service-template-go
+  ORIGINAL_IMAGE_NAME: ghcr.io/keptn-sandbox/sumologic-service
   NEW_IMAGE_NAME: ghcr.io/${{ github.repository }}
-  ORIGINAL_SERVICE_NAME: keptn-service-template-go
+  ORIGINAL_SERVICE_NAME: sumologic-service
   TARGET_BRANCH: patch/initialize-repo
-  ORIGINAL_REPO_NAME: keptn-sandbox/keptn-service-template-go
+  ORIGINAL_REPO_NAME: keptn-sandbox/sumologic-service
   NEW_REPO_NAME: ${{ github.repository }}
 
 jobs:

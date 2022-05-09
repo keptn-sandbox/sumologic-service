@@ -1,4 +1,4 @@
-module example.com/keptn-service-template-go
+module github.com/keptn-sandbox/sumologic-service
 
 go 1.17
 
