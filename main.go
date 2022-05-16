@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2" // make sure to use v2 cloudevents here
@@ -21,6 +22,7 @@ import (
 )
 
 var keptnOptions = keptn.KeptnOpts{}
+var env envConfig
 
 const (
 	envVarLogLevel = "LOG_LEVEL"
@@ -36,11 +38,15 @@ type envConfig struct {
 	// URL of the Keptn configuration service (this is where we can fetch files from the config repo)
 	ConfigurationServiceUrl string `envconfig:"CONFIGURATION_SERVICE" default:""`
 	// Region Code of the Sumo Logic instance
-	RegionCode string `envconfig:"REGION_CODE" default:"US1"`
+	RegionCode string `envconfig:"REGION_CODE" default:"us1"`
 	// AccessKey is access key for Sumo Logic (used with AccessId)
 	AccessKey string `envconfig:"ACCESS_KEY" default:""`
 	// AccessId is access id for Sumo Logic (used with AccessKey)
 	AccessId string `envconfig:"ACCESS_ID" default:""`
+	// SumoEndPt is the URL of the Sumo Logic API (changes based on the region code)
+	// If you don't know the region code for your Sumo Logic
+	// check https://api.sumologic.com/docs/#section/Getting-Started/API-Endpoints
+	SumoEndPt string `envconfig:"SUMO_END_PT" default:"https://api.sumologic.com/api"`
 }
 
 // ServiceName specifies the current services name (e.g., used as source when sending CloudEvents)
@@ -181,7 +187,6 @@ func main() {
 		}
 	}
 
-	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {
 		log.Fatalf("Failed to process env var: %s", err)
 	}
@@ -203,6 +208,12 @@ func _main(args []string, env envConfig) int {
 
 	log.Println("Starting sumologic-service...")
 	log.Printf("    on Port = %d; Path=%s", env.Port, env.Path)
+
+	env.RegionCode = strings.ToLower(strings.TrimSpace(env.RegionCode))
+
+	if env.RegionCode != "" && env.RegionCode != "us1" {
+		env.SumoEndPt = fmt.Sprintf("https://api.%s.sumologic.com/api", env.RegionCode)
+	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 

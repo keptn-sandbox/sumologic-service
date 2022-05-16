@@ -3,12 +3,15 @@ module github.com/keptn-sandbox/sumologic-service
 go 1.17
 
 require (
+	github.com/SumoLogic-Labs/sumologic-go-sdk/service/cip v1.2.0
 	github.com/cloudevents/sdk-go/v2 v2.5.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/keptn/go-utils v0.12.0
+	github.com/sirupsen/logrus v1.8.1
 )
 
 require (
+	github.com/antihax/optional v1.0.0 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/cloudevents/sdk-go/observability/opentelemetry/v2 v2.0.0-20211001212819-74757a691209 // indirect
 	github.com/felixge/httpsnoop v1.0.2 // indirect
@@ -24,5 +27,6 @@ require (
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
+	golang.org/x/sys v0.0.0-20210423185535-09eb48e85fd7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
