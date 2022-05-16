@@ -21,6 +21,21 @@ Quick start:
 1. Last but not least: Remove this intro within the README file and make sure the README file properly states what this repository is about
 
 ---
+# Not supported in the query
+- `fillmissing`
+- `outlier`
+- `timeshift`
+
+Why? Because the API does not support `fillmissing` and `outlier`. `timeshift` is supported but you can't write it in the query like `<my-query> | timeshift`. We plan to support `timeshift` in the future ([issue](https://github.com/vadasambar/sumologic-service/issues/1)) but support for `fillmissing` and `outlier` depends on Sumo Logic (can't do anything until Sumo Logic supports it). 
+
+# Rules for using `quantize`
+Based on https://help.sumologic.com/Metrics/Metric-Queries-and-Alerts/07Metrics_Operators/quantize#quantize-syntax
+1. Use only 1 `quantize` (using `quantize` multiple times in a query leads to error)
+2. Use `quantize` immediately after the metric query before any other operator
+3. Quantize should be strictly defined as `query | quantize to [TIME INTERVAL] using [ROLLUP]` (this differs from how Sumo Logic quantize works. You need to be explicit here. Dropping [TIME INTERVAL] or `using` or `[ROLLUP]` won't work)  
+
+Why so many rules? Because [Sumo Logic API does not support quantize in the query](https://api.sumologic.com/docs/#operation/runMetricsQueries). We have implemented a wrapper
+which mimics quantize which works well if you adhere to 1-3.
 
 # sumologic-service
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/keptn-sandbox/sumologic-service)
