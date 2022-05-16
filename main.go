@@ -35,6 +35,12 @@ type envConfig struct {
 	Env string `envconfig:"ENV" default:"local"`
 	// URL of the Keptn configuration service (this is where we can fetch files from the config repo)
 	ConfigurationServiceUrl string `envconfig:"CONFIGURATION_SERVICE" default:""`
+	// Region Code of the Sumo Logic instance
+	RegionCode string `envconfig:"REGION_CODE" default:"US1"`
+	// AccessKey is access key for Sumo Logic (used with AccessId)
+	AccessKey string `envconfig:"ACCESS_KEY" default:""`
+	// AccessId is access id for Sumo Logic (used with AccessKey)
+	AccessId string `envconfig:"ACCESS_ID" default:""`
 }
 
 // ServiceName specifies the current services name (e.g., used as source when sending CloudEvents)
