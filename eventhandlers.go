@@ -2,13 +2,39 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"math"
+	"net/http"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
+	"github.com/SumoLogic-Labs/sumologic-go-sdk/service/cip"
+	"github.com/SumoLogic-Labs/sumologic-go-sdk/service/cip/types"
 	cloudevents "github.com/cloudevents/sdk-go/v2" // make sure to use v2 cloudevents here
 	keptn "github.com/keptn/go-utils/pkg/lib"
 	keptnv2 "github.com/keptn/go-utils/pkg/lib/v0_2_0"
 )
+
+const (
+	sliFile                        = "sumologic-service/sli.yaml"
+	defaultSleepBeforeAPIInSeconds = 30
+)
+
+// We have to put a min of 30s of sleep for the Sumo Logic API to reflect the data correctly
+var sleepBeforeAPIInSeconds int
+
+func init() {
+	var err error
+	sleepBeforeAPIInSeconds, err = strconv.Atoi(strings.TrimSpace(os.Getenv("SLEEP_BEFORE_API_IN_SECONDS")))
+	if err != nil || sleepBeforeAPIInSeconds < defaultSleepBeforeAPIInSeconds {
+		log.Infof("defaulting SLEEP_BEFORE_API_IN_SECONDS to 30s because it was set to '%v' which is less than the min allowed value of 30s", sleepBeforeAPIInSeconds)
+		sleepBeforeAPIInSeconds = defaultSleepBeforeAPIInSeconds
+	}
+}
 
 /**
 * Here are all the handler functions for the individual event
@@ -102,6 +128,17 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		return err
 	}
 
+	start, err := parseUnixTimestamp(data.GetSLI.Start)
+	if err != nil {
+		log.Error("unable to parse sli start timestamp: %v", err)
+		return err
+	}
+	end, err := parseUnixTimestamp(data.GetSLI.End)
+	if err != nil {
+		log.Errorf("unable to parse sli end timestamp: %v", err)
+		return err
+	}
+
 	// Step 4 - prep-work
 	// Get any additional input / configuration data
 	// - Labels: get the incoming labels for potential config data and use it to pass more labels on result, e.g: links
@@ -110,31 +147,29 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	testRunID := labels["testRunId"]
 
 	// Step 5 - get SLI Config File
 	// Get SLI File from sumologic-service subdirectory of the config repo - to add the file use:
 	//   keptn add-resource --project=PROJECT --stage=STAGE --service=SERVICE --resource=my-sli-config.yaml  --resourceUri=sumologic-service/sli.yaml
-	sliFile := "sumologic-service/sli.yaml"
-	sliConfigFileContent, err := myKeptn.GetKeptnResource(sliFile)
+	sliConfig, err := myKeptn.GetSLIConfiguration(data.Project, data.Stage, data.Service, sliFile)
+	log.Debugf("SLI config: %v", sliConfig)
 
 	// FYI you do not need to "fail" if sli.yaml is missing, you can also assume smart defaults like we do
 	// in keptn-contrib/dynatrace-service and keptn-contrib/prometheus-service
 	if err != nil {
 		// failed to fetch sli config file
 		errMsg := fmt.Sprintf("Failed to fetch SLI file %s from config repo: %s", sliFile, err.Error())
-		log.Println(errMsg)
+		log.Error(errMsg)
 		// send a get-sli.finished event with status=error and result=failed back to Keptn
 
 		_, err = myKeptn.SendTaskFinishedEvent(&keptnv2.EventData{
 			Status: keptnv2.StatusErrored,
 			Result: keptnv2.ResultFailed,
+			Labels: labels,
 		}, ServiceName)
 
 		return err
 	}
-
-	fmt.Println(sliConfigFileContent)
 
 	// Step 6 - do your work - iterate through the list of requested indicators and return their values
 	// Indicators: this is the list of indicators as requested in the SLO.yaml
@@ -142,7 +177,79 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 	indicators := data.GetSLI.Indicators
 	sliResults := []*keptnv2.SLIResult{}
 
+	client := cip.APIClient{
+		Cfg: &cip.Configuration{
+			Authentication: cip.BasicAuth{
+				AccessId:  env.AccessId,
+				AccessKey: env.AccessKey,
+			},
+			BasePath:   env.SumoEndPt,
+			HTTPClient: &http.Client{},
+		},
+	}
+
 	for _, indicatorName := range indicators {
+		// Pulling the data from Sumo Logic api immediately gives incorrect data in the api response
+		// we have to wait for some time for the correct data to be reflected in the api response
+		log.Debugf("waiting for %vs so that the metrics data is reflected correctly in the api", sleepBeforeAPIInSeconds)
+		time.Sleep(time.Second * time.Duration(sleepBeforeAPIInSeconds))
+		query := replaceQueryParameters(data, sliConfig[indicatorName], start, end)
+		log.Debugf("actual query sent to sumologic: %v, from: %v, to: %v", query, start.Unix(), end.Unix())
+		re := regexp.MustCompile(`quantize`)
+		matches := re.FindAllString(query, -1)
+		var quantizePart string
+		if len(matches) != 1 {
+			log.Fatal("please specify only 1 `quantize` in the query")
+		} else if len(matches) == 1 {
+			qRe := regexp.MustCompile(`quantize[[:space:]]+to[[:space:]]+[[:digit:]]+[[:lower:]][[:space:]]+using[[:space:]]+[[:lower:]]+[[:space:]]*\|?`)
+			m := re.FindAllString(query, -1)
+			if len(m) == 0 {
+				log.Fatalf("`quantize` part of the query should match the regex `%s`", qRe.String())
+			}
+			quantizePart = m[0]
+			query = strings.ReplaceAll(query, quantizePart, " ")
+		}
+
+		// It takes some time until the metrics
+		// start reflecting in the SumoLogic API results
+		time.Sleep(time.Second * 30)
+
+		req := types.MetricsQueryRequest{
+			Queries: []types.MetricsQueryRow{
+				types.MetricsQueryRow{
+					Query:        query,
+					RowId:        "A",
+					Quantization: 30000,
+					Rollup:       "Avg",
+				},
+			},
+			TimeRange: &types.ResolvableTimeRange{
+				Type_: "BeginBoundedTimeRange",
+				From: types.TimeRangeBoundary{
+					Type:        "EpochTimeRangeBoundary",
+					EpochMillis: start.UnixMilli(),
+					RangeName:   "from",
+				},
+				To: types.TimeRangeBoundary{
+					Type:        "EpochTimeRangeBoundary",
+					EpochMillis: end.UnixMilli(),
+					RangeName:   "to",
+				},
+			},
+		}
+		mRes, hRes, err := client.RunMetricsQueries(req)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("mRes", mRes)
+		for _, v := range mRes.QueryResult {
+			fmt.Printf("Row ID: %v, Time series: %v\n", v.RowId, v.TimeSeriesList.TimeSeries)
+			for _, t := range v.TimeSeriesList.TimeSeries {
+				fmt.Printf("Metrics Defn: %v\n", *t.MetricDefinition)
+				fmt.Printf("Points Defn: %v\n", *t.Points)
+			}
+		}
+		fmt.Println("hRes", hRes.Status)
 		sliResult := &keptnv2.SLIResult{
 			Metric: indicatorName,
 			Value:  123.4, // ToDo: Fetch the values from your monitoring tool here
@@ -150,8 +257,7 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		sliResults = append(sliResults, sliResult)
 	}
 
-	// Step 7 - add additional context via labels (e.g., a backlink to the monitoring or CI tool)
-	labels["Link to Data Source"] = "https://mydatasource/myquery?testRun=" + testRunID
+	// query := "metric=container_memory_working_set_bytes container=fluentd pod=my-sumo-sumologic-fluentd-metrics-0 | quantize to 30s using avg"
 
 	// Step 8 - Build get-sli.finished event data
 	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
@@ -221,4 +327,36 @@ func HandleActionTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		return nil
 	}
 	return nil
+}
+
+func parseUnixTimestamp(timestamp string) (time.Time, error) {
+	parsedTime, err := time.Parse(time.RFC3339, timestamp)
+	if err == nil {
+		return parsedTime, nil
+	}
+
+	timestampInt, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return time.Now(), err
+	}
+	unix := time.Unix(timestampInt, 0)
+	return unix, nil
+}
+
+func replaceQueryParameters(data *keptnv2.GetSLITriggeredEventData, query string, start, end time.Time) string {
+	query = strings.Replace(query, "$PROJECT", data.Project, -1)
+	query = strings.Replace(query, "$STAGE", data.Stage, -1)
+	query = strings.Replace(query, "$SERVICE", data.Service, -1)
+	query = strings.Replace(query, "$project", data.Project, -1)
+	query = strings.Replace(query, "$stage", data.Stage, -1)
+	query = strings.Replace(query, "$service", data.Service, -1)
+	durationString := strconv.FormatInt(getDurationInSeconds(start, end), 10)
+	query = strings.Replace(query, "$DURATION", durationString, -1)
+	return query
+}
+
+func getDurationInSeconds(start, end time.Time) int64 {
+
+	seconds := end.Sub(start).Seconds()
+	return int64(math.Ceil(seconds))
 }
