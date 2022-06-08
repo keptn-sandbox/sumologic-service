@@ -11,6 +11,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/SumoLogic-Labs/sumologic-go-sdk/service/cip"
 	"github.com/SumoLogic-Labs/sumologic-go-sdk/service/cip/types"
@@ -195,20 +197,8 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		time.Sleep(time.Second * time.Duration(sleepBeforeAPIInSeconds))
 		query := replaceQueryParameters(data, sliConfig[indicatorName], start, end)
 		log.Debugf("actual query sent to sumologic: %v, from: %v, to: %v", query, start.Unix(), end.Unix())
-		re := regexp.MustCompile(`quantize`)
-		matches := re.FindAllString(query, -1)
-		var quantizePart string
-		if len(matches) != 1 {
-			log.Fatal("please specify only 1 `quantize` in the query")
-		} else if len(matches) == 1 {
-			qRe := regexp.MustCompile(`quantize[[:space:]]+to[[:space:]]+[[:digit:]]+[[:lower:]][[:space:]]+using[[:space:]]+[[:lower:]]+[[:space:]]*\|?`)
-			m := re.FindAllString(query, -1)
-			if len(m) == 0 {
-				log.Fatalf("`quantize` part of the query should match the regex `%s`", qRe.String())
-			}
-			quantizePart = m[0]
-			query = strings.ReplaceAll(query, quantizePart, " ")
-		}
+
+		formattedQuery, quantizeDuration, quantizeRollup := processQuery(query)
 
 		// It takes some time until the metrics
 		// start reflecting in the SumoLogic API results
@@ -217,10 +207,10 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		req := types.MetricsQueryRequest{
 			Queries: []types.MetricsQueryRow{
 				types.MetricsQueryRow{
-					Query:        query,
+					Query:        formattedQuery,
 					RowId:        "A",
-					Quantization: 30000,
-					Rollup:       "Avg",
+					Quantization: quantizeDuration,
+					Rollup:       quantizeRollup,
 				},
 			},
 			TimeRange: &types.ResolvableTimeRange{
@@ -359,4 +349,48 @@ func getDurationInSeconds(start, end time.Time) int64 {
 
 	seconds := end.Sub(start).Seconds()
 	return int64(math.Ceil(seconds))
+}
+
+// processQuery takes the query, parses it and returns the
+// 1. formattedQuery after removing `quantize` operator (because it is
+// 	not supported by the API <- syntactic sugar added by us)
+// 2. quantizeVal which is in milliseconds (int64)
+// 3. rollup which is either of Avg, Min, Max, Sum, or Count.
+// Check https://help.sumologic.com/Metrics/Metric-Queries-and-Alerts/07Metrics_Operators/quantize#quantize-syntax
+// for more info
+func processQuery(query string) (string, int64, string) {
+
+	// Ensure there is only one `quantize` in the query
+	re := regexp.MustCompile(`quantize`)
+	matches := re.FindAllString(query, -1)
+	if len(matches) != 1 {
+		log.Fatal("please specify 1 `quantize` in the query")
+	}
+
+	// Parse the quantize duration and Roll up type (e.g., avg, sum) from the query
+	qRe := regexp.MustCompile(`quantize\s+to\s+(\d+[a-z])\s+using\s+([a-z]+)\s*\|?`)
+	quantizePart := qRe.FindAllString(query, -1)[0]
+	if len(quantizePart) == 0 {
+		log.Fatalf("`quantize` part of the query should match the regex `%s`", qRe.String())
+	}
+
+	// Output of FindAllStringSubmatch is of the form [["actual", "result", "goes", "here"]]
+	submatches := qRe.FindAllStringSubmatch(quantizePart, -1)[0]
+
+	query = strings.ReplaceAll(query, quantizePart, " ")
+
+	quantizeVal, err := time.ParseDuration(submatches[1])
+	if err != nil {
+		panic("couldn't parse the value for quantize interval/duration")
+	}
+
+	formattedQuery := strings.TrimSpace(query)
+
+	if formattedQuery[len(formattedQuery)-1] == '|' {
+		formattedQuery = formattedQuery[:len(formattedQuery)-1]
+	}
+
+	c := cases.Title(language.English)
+
+	return formattedQuery, quantizeVal.Milliseconds(), c.String(submatches[2])
 }
