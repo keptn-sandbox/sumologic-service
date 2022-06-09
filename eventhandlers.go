@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -198,7 +199,11 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		query := replaceQueryParameters(data, sliConfig[indicatorName], start, end)
 		log.Debugf("actual query sent to sumologic: %v, from: %v, to: %v", query, start.Unix(), end.Unix())
 
-		formattedQuery, quantizeDuration, quantizeRollup := processQuery(query)
+		formattedQuery, quantizeDuration, quantizeRollup, err := processQuery(query)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 
 		// It takes some time until the metrics
 		// start reflecting in the SumoLogic API results
@@ -229,25 +234,18 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		}
 		mRes, hRes, err := client.RunMetricsQueries(req)
 		if err != nil {
-			panic(err)
+			log.Debugf("metrics query response: %v", mRes)
+			log.Debugf("http response: %v", *hRes)
+			log.Error(err)
+			return err
 		}
-		fmt.Println("mRes", mRes)
-		for _, v := range mRes.QueryResult {
-			fmt.Printf("Row ID: %v, Time series: %v\n", v.RowId, v.TimeSeriesList.TimeSeries)
-			for _, t := range v.TimeSeriesList.TimeSeries {
-				fmt.Printf("Metrics Defn: %v\n", *t.MetricDefinition)
-				fmt.Printf("Points Defn: %v\n", *t.Points)
-			}
-		}
-		fmt.Println("hRes", hRes.Status)
+
 		sliResult := &keptnv2.SLIResult{
 			Metric: indicatorName,
-			Value:  123.4, // ToDo: Fetch the values from your monitoring tool here
+			Value:  mRes.QueryResult[0].TimeSeriesList.TimeSeries[0].Points.Values[0],
 		}
 		sliResults = append(sliResults, sliResult)
 	}
-
-	// query := "metric=container_memory_working_set_bytes container=fluentd pod=my-sumo-sumologic-fluentd-metrics-0 | quantize to 30s using avg"
 
 	// Step 8 - Build get-sli.finished event data
 	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
@@ -358,20 +356,20 @@ func getDurationInSeconds(start, end time.Time) int64 {
 // 3. rollup which is either of Avg, Min, Max, Sum, or Count.
 // Check https://help.sumologic.com/Metrics/Metric-Queries-and-Alerts/07Metrics_Operators/quantize#quantize-syntax
 // for more info
-func processQuery(query string) (string, int64, string) {
+func processQuery(query string) (string, int64, string, error) {
 
 	// Ensure there is only one `quantize` in the query
 	re := regexp.MustCompile(`quantize`)
 	matches := re.FindAllString(query, -1)
 	if len(matches) != 1 {
-		log.Fatal("please specify 1 `quantize` in the query")
+		return "", 0, "", errors.New("please specify 1 `quantize` in the query")
 	}
 
 	// Parse the quantize duration and Roll up type (e.g., avg, sum) from the query
 	qRe := regexp.MustCompile(`quantize\s+to\s+(\d+[a-z])\s+using\s+([a-z]+)\s*\|?`)
 	quantizePart := qRe.FindAllString(query, -1)[0]
 	if len(quantizePart) == 0 {
-		log.Fatalf("`quantize` part of the query should match the regex `%s`", qRe.String())
+		return "", 0, "", errors.New(fmt.Sprintf("`quantize` part of the query should match the regex `%s`", qRe.String()))
 	}
 
 	// Output of FindAllStringSubmatch is of the form [["actual", "result", "goes", "here"]]
@@ -381,7 +379,7 @@ func processQuery(query string) (string, int64, string) {
 
 	quantizeVal, err := time.ParseDuration(submatches[1])
 	if err != nil {
-		panic("couldn't parse the value for quantize interval/duration")
+		return "", 0, "", errors.New("couldn't parse the value for quantize interval/duration")
 	}
 
 	formattedQuery := strings.TrimSpace(query)
@@ -392,5 +390,5 @@ func processQuery(query string) (string, int64, string) {
 
 	c := cases.Title(language.English)
 
-	return formattedQuery, quantizeVal.Milliseconds(), c.String(submatches[2])
+	return formattedQuery, quantizeVal.Milliseconds(), c.String(submatches[2]), nil
 }
