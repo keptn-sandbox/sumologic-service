@@ -8,6 +8,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/keptn/go-utils v0.12.0
 	github.com/sirupsen/logrus v1.8.1
+	golang.org/x/text v0.3.0
 )
 
 require (
