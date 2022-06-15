@@ -191,6 +191,19 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		},
 	}
 
+	// default values
+	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
+		EventData: keptnv2.EventData{
+			Status: keptnv2.StatusSucceeded,
+			Result: keptnv2.ResultPass,
+		},
+		GetSLI: keptnv2.GetSLIFinished{
+			Start: data.GetSLI.Start,
+			End:   data.GetSLI.End,
+		},
+	}
+	var sliResult *keptnv2.SLIResult
+
 	for _, indicatorName := range indicators {
 		// Pulling the data from Sumo Logic api immediately gives incorrect data in the api response
 		// we have to wait for some time for the correct data to be reflected in the api response
@@ -237,28 +250,19 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 			log.Debugf("metrics query response: %v", mRes)
 			log.Debugf("http response: %v", *hRes)
 			log.Error(err)
-			return err
+			getSliFinishedEventData.EventData.Status = keptnv2.StatusErrored
+			getSliFinishedEventData.EventData.Result = keptnv2.ResultFailed
+		} else {
+			sliResult = &keptnv2.SLIResult{
+				Metric: indicatorName,
+				Value:  mRes.QueryResult[0].TimeSeriesList.TimeSeries[0].Points.Values[0],
+			}
+			sliResults = append(sliResults, sliResult)
 		}
 
-		sliResult := &keptnv2.SLIResult{
-			Metric: indicatorName,
-			Value:  mRes.QueryResult[0].TimeSeriesList.TimeSeries[0].Points.Values[0],
-		}
-		sliResults = append(sliResults, sliResult)
 	}
 
-	// Step 8 - Build get-sli.finished event data
-	getSliFinishedEventData := &keptnv2.GetSLIFinishedEventData{
-		EventData: keptnv2.EventData{
-			Status: keptnv2.StatusSucceeded,
-			Result: keptnv2.ResultPass,
-		},
-		GetSLI: keptnv2.GetSLIFinished{
-			IndicatorValues: sliResults,
-			Start:           data.GetSLI.Start,
-			End:             data.GetSLI.End,
-		},
-	}
+	getSliFinishedEventData.GetSLI.IndicatorValues = sliResults
 
 	_, err = myKeptn.SendTaskFinishedEvent(getSliFinishedEventData, ServiceName)
 
