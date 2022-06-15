@@ -5,6 +5,9 @@ image:
 service:
   enabled: true                              # Creates a Kubernetes Service for the sumologic-service
 
+sumologicService:
+  region: us1
+
 distributor:
   stageFilter: ""                            # Sets the stage this helm service belongs to
   serviceFilter: ""                          # Sets the service this helm service belongs to

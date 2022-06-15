@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "keptn-service.fullname" . }}
+  name: {{ include "sumologic-service.fullname" . }}
   labels:
-    {{- include "keptn-service.labels" . | nindent 4 }}
+    {{- include "sumologic-service.labels" . | nindent 4 }}
 
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "keptn-service.selectorLabels" . | nindent 6 }}
+      {{- include "sumologic-service.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -17,17 +17,17 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "keptn-service.labels" . | nindent 8 }}
+        {{- include "sumologic-service.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "keptn-service.serviceAccountName" . }}
+      serviceAccountName: {{ include "sumologic-service.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: keptn-service
+        - name: sumologic-service
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -47,6 +47,8 @@ spec:
             value: "http://localhost:8081/configuration-service"
           - name: env
             value: 'production'
+          - name: REGION_CODE
+            value: "{{ .Values.sumologicService.region }}"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
         - name: distributor

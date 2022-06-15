@@ -2,14 +2,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "keptn-service.fullname" . }}
+  name: {{ include "sumologic-service.fullname" . }}
   labels:
-    {{- include "keptn-service.labels" . | nindent 4 }}
+    {{- include "sumologic-service.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
     - port: 8080
       protocol: TCP
   selector:
-    {{- include "keptn-service.selectorLabels" . | nindent 4 }}
+    {{- include "sumologic-service.selectorLabels" . | nindent 4 }}
   {{- end }}
