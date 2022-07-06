@@ -210,7 +210,7 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		log.Debugf("waiting for %vs so that the metrics data is reflected correctly in the api", sleepBeforeAPIInSeconds)
 		time.Sleep(time.Second * time.Duration(sleepBeforeAPIInSeconds))
 		query := replaceQueryParameters(data, sliConfig[indicatorName], start, end)
-		log.Debugf("actual query sent to sumologic: %v, from: %v, to: %v", query, start.Unix(), end.Unix())
+		log.Debugf("query: %v, from: %v, to: %v", query, start.Unix(), end.Unix())
 
 		formattedQuery, quantizeDuration, quantizeRollup, err := processQuery(query)
 		if err != nil {
