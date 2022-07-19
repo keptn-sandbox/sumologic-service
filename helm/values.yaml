@@ -5,7 +5,14 @@ image:
 service:
   enabled: true                              # Creates a Kubernetes Service for the sumologic-service
 
-sumologicService:
+sumologicservice:
+  # Set to ACCESS_ID in the chart's Secret
+  accessId: ""
+  # Set to ACCESS_KEY in the chart's Secret
+  accessKey: ""
+  # Secret containing Sumo Logic's ACCESS_ID and ACCESS_KEY
+  # ACCESS_ID, ACCESS_ID (key names should be an exact match)
+  existingSecret: "" # If you want to use existing Secret in the cluster
   region: us1
 
 distributor:

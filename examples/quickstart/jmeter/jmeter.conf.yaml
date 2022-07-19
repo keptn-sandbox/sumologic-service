@@ -8,7 +8,7 @@ workloads:
     acceptederrorrate: 1.0
   - teststrategy: performance_light
     vuser: 50
-    loopcount: 50
+    loopcount: 200
     script: jmeter/load.jmx
     acceptederrorrate: 1.0
 

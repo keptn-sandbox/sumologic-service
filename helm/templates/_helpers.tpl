@@ -61,3 +61,14 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Secret
+*/}}
+{{- define "sumologic-service.secret" -}}
+{{- if .Values.sumologicservice.existingSecret }}
+.Values.sumologicservice.existingSecret
+{{- else }}
+(include "sumologic-service.fullname" .)
+{{- end }}
+{{- end }}
