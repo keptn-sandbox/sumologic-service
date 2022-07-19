@@ -1,4 +1,5 @@
 ---
 spec_version: '1.0'
 indicators:
+  # TODO: needs to be changed for SumoLogic
   system_load: avg:system.load.1{*}.rollup(avg, $DURATION)

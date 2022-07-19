@@ -21,8 +21,8 @@
 #    1.11.2
 # 4. keptn
 #    $ keptn version
-#    Keptn CLI and Keptn cluster version are already on the latest version ( 0.11.4 )! 
-#    * Your Keptn CLI version: 0.11.4
+#    ... 
+#    Keptn CLI version: 0.15.0
 #    ...
 # 5. minikube
 #    $ minikube version
@@ -150,18 +150,20 @@ function wait_for_deployment_in_namespace() {
 INGRESS_HOST=localhost
 INGRESS_PORT=5000
 
-# Datadog does not work with the docker driver
-minikube start --cpus='4' --memory='10g' --driver=virtualbox
+k3d cluster create "sumo-$RANDOM" -p "8082:80@loadbalancer" --k3s-server-arg "--kube-proxy-arg=conntrack-max-per-core=0"  --k3s-agent-arg "--kube-proxy-arg=conntrack-max-per-core=0" --agents 3 --registry-create
 
 check_if_keptn_cli_is_installed
-# TODO: This might work without any `--use-case` flag 
-# i.e., only control plane with quality gates 
-# but needs to be verified
-keptn install --use-case=continuous-delivery -y
 
-# check_if_istioctl_cli_is_installed
-# # Install Istio
-# istioctl install -y
+echo "Adding keptn repo"
+helm repo add keptn https://charts.keptn.sh
+echo "Installing keptn"
+kubectl create ns keptn
+kubectl config set-context --current --namespace=keptn
+helm install keptn keptn/keptn -f examples/keptn-values.yaml --version 0.15.0
+
+check_if_istioctl_cli_is_installed
+# Install Istio
+istioctl install -y
 
 check_if_kubectl_cli_is_installed
 # Kill an existing port-forward if it exists 
@@ -228,33 +230,22 @@ kubectl apply -f ./quickstart/lighthouse_config.yaml
 # ---------------------------------------------- #
 
 # This block of code
-# 1. Installs Datadog
+# 1. Installs SumoLogic
 # 2. Sets it up with the API keys in a K8s Secret
-# 3. Installs datadog integration for Keptn
+# 3. Installs SumoLogic integration for Keptn
 
-helm repo add datadog https://helm.datadoghq.com
+helm repo add sumologic https://sumologic.github.io/sumologic-kubernetes-collection
 
-# Install datadog
-# Uncomment this line if you want to install the Datadog operator
-# helm install my-datadog-operator datadog/datadog-operator
-# kubectl apply -f ~/sandbox/snippets/ddagent.yaml
-# kubectl apply -f ~/sandbox/snippets/ddmonitor.yaml 
-# install datadog api secret
-# kubectl create secret generic datadog-secret --from-literal api-key=${DD_API_KEY} --from-literal app-key=${DD_APP_KEY}
-
-# # Install datadog using the Datadog helm chart
-# helm install datadog --set datadog.apiKey=${DD_API_KEY} datadog/datadog --set datadog.appKey=${DD_APP_KEY} --set datadog.site=${DD_SITE} --set clusterAgent.enabled=true --set clusterAgent.metricsProvider.enabled=true --set clusterAgent.createPodDisruptionBudget=true --set clusterAgent.replicas=2
-
-helm install datadog --set datadog.apiKey=${DD_API_KEY} datadog/datadog --set datadog.appKey=${DD_APP_KEY} --set datadog.site=${DD_SITE} --set clusterAgent.enabled=true --set clusterAgent.metricsProvider.enabled=true --set clusterAgent.createPodDisruptionBudget=true --set clusterAgent.replicas=2
+# Install SumoLogic
+helm upgrade --install my-sumo sumologic/sumologic   --set sumologic.accessId="${ACCESS_ID}"   --set sumologic.accessKey="${ACCESS_KEY}"   --set sumologic.clusterName="keptn-sumo"
 
 
-# Install datadog-service integration for Keptn
-# kubectl apply -f ~/sandbox/datadog-service/deploy/service.yaml
-helm install datadog-service ./helm --set datadogservice.ddApikey=${DD_API_KEY} --set datadogservice.ddAppKey=${DD_APP_KEY} --set datadogservice.ddSite=${DD_SITE}
+# Install sumologic-service integration for Keptn
+helm install sumologic-service ./helm --set sumologicservice.accessId=${ACCESS_ID} --set sumologicservice.accessKey=${ACCESS_KEY} 
 
-# Add datadog sli and slo
-keptn add-resource --project="podtatohead" --stage=hardening --service=helloservice --resource=./quickstart/sli.yaml --resourceUri=datadog/sli.yaml
-keptn add-resource --project="podtatohead" --stage=hardening --service="helloservice" --resource=./quickstart/slo.yaml --resourceUri=slo.yaml
+# Add sli and slo
+keptn add-resource --project="podtatohead" --stage="hardening" --service="helloservice" --resource=./quickstart/sli.yaml --resourceUri=datadog/sli.yaml
+keptn add-resource --project="podtatohead" --stage="hardening" --service="helloservice" --resource=./quickstart/slo.yaml --resourceUri=slo.yaml
 
 
 # ---------------------------------------------- #
@@ -262,13 +253,13 @@ keptn add-resource --project="podtatohead" --stage=hardening --service="helloser
 # This block of code triggers delivery sequence for the service
 
 print_headline "Trigger the delivery sequence with Keptn"
-echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE --tag=$VERSION"
-keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE --tag=$VERSION
+echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$VERSION"
+keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$VERSION
 verify_test_step $? "Trigger delivery for helloservice failed"
 
 print_headline "Trigger a new delivery sequence with Keptn"
-echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE --tag=$SLOW_VERSION"
-keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE --tag=$SLOW_VERSION
+echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$SLOW_VERSION"
+keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$SLOW_VERSION
 verify_test_step $? "Trigger delivery for helloservice failed"
 
 
@@ -277,12 +268,12 @@ echo "Following the multi stage delivery in Keptn Bridge here: http://$INGRESS_H
 
 print_headline "Have a look at the Keptn Bridge and explore the demo project"
 echo "You can run a new delivery sequence with the following command"
-echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE --tag=$VERSION"
+echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$VERSION"
 
 print_headline "Multi-stage delviery demo with SLO-based quality gates for Datadog Keptn integration has been successfully set up"
 
 echo "You can run a new delivery sequence with the following command"
-echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE --tag=$VERSION"
+echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$VERSION"
 echo "or by deploying a slow version that will not pass the quality gate"
 echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE --tag=$SLOW_VERSION"
 
