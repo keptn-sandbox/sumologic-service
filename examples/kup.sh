@@ -150,7 +150,11 @@ function wait_for_deployment_in_namespace() {
 INGRESS_HOST=localhost
 INGRESS_PORT=5000
 
-k3d cluster create "sumo-$RANDOM" -p "8082:80@loadbalancer" --k3s-server-arg "--kube-proxy-arg=conntrack-max-per-core=0"  --k3s-agent-arg "--kube-proxy-arg=conntrack-max-per-core=0" --agents 3 --registry-create
+# Sumo doesn't work well with k3d clusters
+# You might not need so many resources
+# But if you use less resources for your cluster, you might have to scale
+# down a few workloads (reduce replicas for example)
+minikube start --cpus='6' --memory='12g' --driver=virtualbox -p sumo
 
 check_if_keptn_cli_is_installed
 
@@ -241,7 +245,7 @@ helm upgrade --install my-sumo sumologic/sumologic   --set sumologic.accessId="$
 
 
 # Install sumologic-service integration for Keptn
-helm install sumologic-service ./helm --set sumologicservice.accessId=${ACCESS_ID} --set sumologicservice.accessKey=${ACCESS_KEY} 
+helm install sumologic-service ../helm --set sumologicservice.accessId=${ACCESS_ID} --set sumologicservice.accessKey=${ACCESS_KEY} 
 
 # Add sli and slo
 keptn add-resource --project="podtatohead" --stage="hardening" --service="helloservice" --resource=./quickstart/sli.yaml --resourceUri=datadog/sli.yaml
