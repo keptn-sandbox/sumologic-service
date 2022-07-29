@@ -9,14 +9,14 @@ objectives:
     displayName: "CPU Usage"
     pass:
       - criteria:
-          - "<0.7"
+          - "<20"
     warning:
       - criteria:
-          - ">=0.7"
-          - "<0.9"
+          - ">=30"
+          - "<50"
     fail:
       - criteria:
-          - ">=0.9"
+          - ">=50"
 
 total_score:
   pass: "100%"
