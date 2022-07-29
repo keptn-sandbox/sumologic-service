@@ -14,16 +14,17 @@ sumologicservice:
   # ACCESS_ID, ACCESS_ID (key names should be an exact match)
   existingSecret: "" # If you want to use existing Secret in the cluster
   region: us1
+  logLevel: "info"
 
 distributor:
   stageFilter: ""                            # Sets the stage this helm service belongs to
   serviceFilter: ""                          # Sets the service this helm service belongs to
   projectFilter: ""                          # Sets the project this helm service belongs to
-  pubsubTopic: "sh.keptn.>"                  # Sets the events the service subscribes to
+  pubsubTopic: "sh.keptn.event.monitoring.configure,sh.keptn.event.configure-monitoring.triggered,sh.keptn.event.get-sli.triggered"                  # Sets the events the service subscribes to
   image:
     repository: docker.io/keptn/distributor  # Container Image Name
     pullPolicy: IfNotPresent                 # Kubernetes Image Pull Policy
-    tag: "0.12.2"                            # Container Tag
+    tag: "0.15.0"                            # Container Tag
   config:
     queueGroup:
       enabled: true                          # Enable connection via Nats queue group to support exactly-once message processing
