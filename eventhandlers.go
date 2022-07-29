@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	sliFile                        = "sumologic-service/sli.yaml"
-	defaultSleepBeforeAPIInSeconds = 30
+	sliFile                        = "sumologic/sli.yaml"
+	defaultSleepBeforeAPIInSeconds = 60
 )
 
-// We have to put a min of 30s of sleep for the Sumo Logic API to reflect the data correctly
+// We have to put a min of 60s of sleep for the Sumo Logic API to reflect the data correctly
 var sleepBeforeAPIInSeconds int
 
 func init() {
@@ -215,6 +215,12 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		formattedQuery, quantizeDuration, quantizeRollup, err := processQuery(query)
 		if err != nil {
 			log.Error(err)
+			getSliFinishedEventData.Status = keptnv2.StatusErrored
+			getSliFinishedEventData.Result = keptnv2.ResultFailed
+			_, sendErr := myKeptn.SendTaskFinishedEvent(getSliFinishedEventData, ServiceName)
+			if sendErr != nil {
+				log.Error(sendErr)
+			}
 			return err
 		}
 
@@ -245,10 +251,13 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 				},
 			},
 		}
+		log.Debugf("metrics query request: %v", req)
+		log.Debugf("formattedQuery: %v", formattedQuery)
 		mRes, hRes, err := client.RunMetricsQueries(req)
+		log.Debugf("metrics query response: %v", mRes)
+		log.Debugf("metric value from sumologic: %v", mRes.QueryResult[0].TimeSeriesList.TimeSeries[0].Points.Values[0])
+		log.Debugf("http response: %v", *hRes)
 		if err != nil {
-			log.Debugf("metrics query response: %v", mRes)
-			log.Debugf("http response: %v", *hRes)
 			log.Error(err)
 			getSliFinishedEventData.EventData.Status = keptnv2.StatusErrored
 			getSliFinishedEventData.EventData.Result = keptnv2.ResultFailed
@@ -342,7 +351,7 @@ func replaceQueryParameters(data *keptnv2.GetSLITriggeredEventData, query string
 	query = strings.Replace(query, "$project", data.Project, -1)
 	query = strings.Replace(query, "$stage", data.Stage, -1)
 	query = strings.Replace(query, "$service", data.Service, -1)
-	durationString := strconv.FormatInt(getDurationInSeconds(start, end), 10)
+	durationString := fmt.Sprintf("%ds", getDurationInSeconds(start, end))
 	query = strings.Replace(query, "$DURATION", durationString, -1)
 	return query
 }
@@ -373,7 +382,7 @@ func processQuery(query string) (string, int64, string, error) {
 	qRe := regexp.MustCompile(`quantize\s+to\s+(\d+[a-z])\s+using\s+([a-z]+)\s*\|?`)
 	quantizePart := qRe.FindAllString(query, -1)[0]
 	if len(quantizePart) == 0 {
-		return "", 0, "", errors.New(fmt.Sprintf("`quantize` part of the query should match the regex `%s`", qRe.String()))
+		return "", 0, "", fmt.Errorf("`quantize` part of the query should match the regex `%s`", qRe.String())
 	}
 
 	// Output of FindAllStringSubmatch is of the form [["actual", "result", "goes", "here"]]
