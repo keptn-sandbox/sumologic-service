@@ -164,6 +164,8 @@ echo "Installing keptn"
 kubectl create ns keptn
 kubectl config set-context --current --namespace=keptn
 helm install keptn keptn/keptn -f examples/keptn-values.yaml --version 0.15.0
+helm install jmeter-service keptn/jmeter-service  --version 0.15.0
+helm install helm-service keptn/helm-service --version 0.15.0
 
 check_if_istioctl_cli_is_installed
 # Install Istio
@@ -228,7 +230,7 @@ print_headline "Adding some load tests"
 keptn add-resource --project=$PROJECT --service=$SERVICE --stage=hardening --resource=./quickstart/jmeter/jmeter.conf.yaml --resourceUri=jmeter/jmeter.conf.yaml
 keptn add-resource --project=$PROJECT --service=$SERVICE --stage=hardening --resource=./quickstart/jmeter/load.jmx --resourceUri=jmeter/load.jmx
 
-# to tell lighthouse to use Datadog if the project is podtatohead
+# to tell lighthouse to use SumoLogic if the project is podtatohead
 kubectl apply -f ./quickstart/lighthouse_config.yaml
 
 # ---------------------------------------------- #
@@ -248,7 +250,7 @@ helm upgrade --install my-sumo sumologic/sumologic   --set sumologic.accessId="$
 helm install sumologic-service ../helm --set sumologicservice.accessId=${ACCESS_ID} --set sumologicservice.accessKey=${ACCESS_KEY} 
 
 # Add sli and slo
-keptn add-resource --project="podtatohead" --stage="hardening" --service="helloservice" --resource=./quickstart/sli.yaml --resourceUri=datadog/sli.yaml
+keptn add-resource --project="podtatohead" --stage="hardening" --service="helloservice" --resource=./quickstart/sli.yaml --resourceUri=sumologic/sli.yaml
 keptn add-resource --project="podtatohead" --stage="hardening" --service="helloservice" --resource=./quickstart/slo.yaml --resourceUri=slo.yaml
 
 
@@ -274,7 +276,7 @@ print_headline "Have a look at the Keptn Bridge and explore the demo project"
 echo "You can run a new delivery sequence with the following command"
 echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$VERSION"
 
-print_headline "Multi-stage delviery demo with SLO-based quality gates for Datadog Keptn integration has been successfully set up"
+print_headline "Multi-stage delviery demo with SLO-based quality gates for SumoLogic Keptn integration has been successfully set up"
 
 echo "You can run a new delivery sequence with the following command"
 echo "keptn trigger delivery --project=$PROJECT --service=$SERVICE --image=$IMAGE:$VERSION"
