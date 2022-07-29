@@ -175,15 +175,12 @@ If you want to get more insights into processing those CloudEvents or even defin
 
 * Build the binary: `go build -ldflags '-linkmode=external' -v -o sumologic-service`
 * Run tests: `go test -race -v ./...`
-* Build the docker image: `docker build . -t keptn-sandbox/sumologic-service:dev` (Note: Ensure that you use the correct DockerHub account/organization)
-* Run the docker image locally: `docker run --rm -it -p 8080:8080 keptn-sandbox/sumologic-service:dev`
-* Push the docker image to DockerHub: `docker push keptn-sandbox/sumologic-service:dev` (Note: Ensure that you use the correct DockerHub account/organization)
-* Deploy the service using `kubectl`: `kubectl apply -f deploy/`
-* Delete/undeploy the service using `kubectl`: `kubectl delete -f deploy/`
+* Build the docker image: `make docker-build IMG_TAG=dev`
+* Run the docker image locally: `docker run --rm -it -p 8080:8080 ghcr.io/keptn-sandbox/sumologic-service:dev`
+* Push the docker image to DockerHub: `docker push ghcr.io/keptn-sandbox/sumologic-service:latest` 
 * Watch the deployment using `kubectl`: `kubectl -n keptn get deployment sumologic-service -o wide`
 * Get logs using `kubectl`: `kubectl -n keptn logs deployment/sumologic-service -f`
 * Watch the deployed pods using `kubectl`: `kubectl -n keptn get pods -l run=sumologic-service`
-* Deploy the service using [Skaffold](https://skaffold.dev/): `skaffold run --default-repo=your-docker-registry --tail` (Note: Replace `your-docker-registry` with your container image registry (defaults to ghcr.io/keptn-sandbox/sumologic-service); also make sure to adapt the image name in [skaffold.yaml](skaffold.yaml))
 
 
 ### Testing Cloud Events
@@ -203,14 +200,6 @@ You can find the details in [.github/workflows/reviewdog.yml](.github/workflows/
 This repo has automated unit tests for pull requests. 
 
 You can find the details in [.github/workflows/CI.yml](.github/workflows/CI.yml).
-
-### GH Actions/Workflow: Build Docker Images
-
-This repo uses GH Actions and Workflows to test the code and automatically build docker images.
-
-Docker Images are automatically pushed based on the configuration done in [.ci_env](.ci_env) and the two [GitHub Secrets](https://github.com/keptn-sandbox/sumologic-service/settings/secrets/actions)
-* `REGISTRY_USER` - your DockerHub username
-* `REGISTRY_PASSWORD` - a DockerHub [access token](https://hub.docker.com/settings/security) (alternatively, your DockerHub password)
 
 ## How to release a new version of this service
 
