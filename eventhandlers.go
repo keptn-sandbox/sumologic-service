@@ -133,7 +133,7 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 
 	start, err := parseUnixTimestamp(data.GetSLI.Start)
 	if err != nil {
-		log.Error("unable to parse sli start timestamp: %v", err)
+		log.Errorf("unable to parse sli start timestamp: %v", err)
 		return err
 	}
 	end, err := parseUnixTimestamp(data.GetSLI.End)
