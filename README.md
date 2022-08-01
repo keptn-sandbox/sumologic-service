@@ -7,14 +7,6 @@ If you want to learn more about Keptn visit us on [keptn.sh](https://keptn.sh)
 
 Check the issue here for more info: https://github.com/keptn/integrations/issues/20
 
-
-**BEFORE YOU START**, please be aware that there are more ways to integrate with your service that don't require creating a service from this template, see https://keptn.sh/docs/0.15.x/integrations/how_integrate/ for more details.
-
-Examples:
-
-* Webhooks: https://keptn.sh/docs/0.15.x/integrations/webhooks/
-* Job-Executor-Service: https://github.com/keptn-sandbox/job-executor-service
-
 ## Quickstart
 If you are on Mac or Linux, you can use [examples/kup.sh](./examples/kup.sh) to set up a local Keptn installation that uses Sumo Logic. This script creates a local minikube cluster, installs Keptn, Istio, Sumo Logic and the Sumo Logic integration for Keptn (check the script for pre-requisites). 
 
