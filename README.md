@@ -18,13 +18,13 @@ examples/kup.sh
 Check [the official docs](https://help.sumologic.com/Manage/Security/Access-Keys#manage-your-access-keys-on-preferences-page) for how to create the Sumo Logic access ID and access key
 
 ## If you already have a Keptn cluster running
-1. Install Sumo Logic
+**1. Install Sumo Logic**
 ```bash
 export ACCESS_ID="<your-sumologic-access-id>" ACCESS_KEY="<your-sumologic-access-key>"
 helm upgrade --install my-sumo sumologic/sumologic   --set sumologic.accessId="${ACCESS_ID}"   --set sumologic.accessKey="${ACCESS_KEY}"   --set sumologic.clusterName="keptn-sumo"
 
 ```
-2. Install Keptn sumologic-service to integrate Sumo Logic with Keptn
+**2. Install Keptn sumologic-service to integrate Sumo Logic with Keptn**
 ```bash
 export ACCESS_ID="<your-sumologic-access-id>" ACCESS_KEY="<your-sumologic-access-key>"
 # cd sumologic-service
@@ -32,7 +32,7 @@ helm install sumologic-service ../helm --set sumologicservice.accessId=${ACCESS_
 
 ```
 
-3. Add SLI and SLO
+**3. Add SLI and SLO**
 ```bash
 keptn add-resource --project="<your-project>" --stage="<stage-name>" --service="<service-name>" --resource=/path-to/your/sli-file.yaml --resourceUri=sumologic/sli.yaml
 keptn add-resource --project="<your-project>"  --stage="<stage-name>" --service="<service-name>" --resource=/path-to/your/slo-file.yaml --resourceUri=slo.yaml
@@ -50,7 +50,8 @@ Use keptn CLI version [0.15.0](https://github.com/keptn/keptn/releases/tag/0.15.
 ```bash
 keptn configure monitoring sumologic --project <project-name>  --service <service-name>
 ``` -->
-4. Configure Keptn to use Sumo Logic SLI provider  
+**4. Configure Keptn to use Sumo Logic SLI provider**  
+
 There's an [open PR](https://github.com/keptn/keptn/pull/8546) to support `keptn configure monitoring sumologic` in the future releases but for now, you need to configure Keptn to use Sumo Logic manually by creating a ConfigMap like this:
 ```yaml
 kind: ConfigMap
@@ -64,7 +65,7 @@ data:
 ```
 [Example](./examples/quickstart/lighthouse_config.yaml)
 
-5. Trigger delivery
+**5. Trigger delivery**
 ```bash
 keptn trigger delivery --project=<project-name> --service=<service-name> --image=<image> --tag=<tag>
 ```
