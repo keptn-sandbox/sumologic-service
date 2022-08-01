@@ -50,6 +50,19 @@ Use keptn CLI version [0.15.0](https://github.com/keptn/keptn/releases/tag/0.15.
 ```bash
 keptn configure monitoring sumologic --project <project-name>  --service <service-name>
 ``` -->
+4. Configure Keptn to use Sumo Logic SLI provider  
+There's an [open PR](https://github.com/keptn/keptn/pull/8546) to support `keptn configure monitoring sumologic` in the future releases but for now, you need to configure Keptn to use Sumo Logic manually by creating a ConfigMap like this:
+```yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: lighthouse-config-<your-project-name>
+  namespace: keptn
+data:
+  sli-provider: "sumologic"
+
+```
+[Example](./examples/quickstart/lighthouse_config.yaml)
 
 5. Trigger delivery
 ```bash
@@ -98,6 +111,22 @@ helm upgrade --install my-sumo sumologic/sumologic   --set sumologic.accessId="$
 ```bash
 keptn configure monitoring sumologic --project <project-name>  --service <service-name>
 ``` -->
+
+Tell Keptn to use Sumo Logic as the SLI provider for your project/service ([future releases will support a better way to do this](https://github.com/keptn/keptn/pull/8546)):
+```yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: lighthouse-config-<your-project-name>
+  namespace: keptn
+data:
+  sli-provider: "sumologic"
+
+```
+[Example](./examples/quickstart/lighthouse_config.yaml)
+```
+kubectl apply -f <above-configmap-file>
+```
 
 This should install the `sumologic-service` together with a Keptn `distributor` into the `keptn` namespace, which you can verify using
 
