@@ -64,6 +64,9 @@ data:
 
 ```
 [Example](./examples/quickstart/lighthouse_config.yaml)
+```
+kubectl apply -f <above-configmap-file>
+```
 
 **5. Trigger delivery**
 ```bash
