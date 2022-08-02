@@ -92,7 +92,7 @@ Based on https://help.sumologic.com/Metrics/Metric-Queries-and-Alerts/07Metrics_
 3. Quantize should be strictly defined as `query | quantize to [TIME INTERVAL] using [ROLLUP]` (this differs from how Sumo Logic quantize works. You need to be explicit here. Dropping [TIME INTERVAL] or `using` or `[ROLLUP]` won't work)  
 
 Why so many rules? Because [Sumo Logic API does not support quantize in the query](https://api.sumologic.com/docs/#operation/runMetricsQueries). We have implemented a wrapper
-which mimics quantize which works well if you adhere to 
+which mimics quantize which works well if you adhere to the above rules.
 
 ## Compatibility Matrix
 
