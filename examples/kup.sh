@@ -243,7 +243,7 @@ kubectl apply -f ./quickstart/lighthouse_config.yaml
 helm repo add sumologic https://sumologic.github.io/sumologic-kubernetes-collection
 
 # Install SumoLogic
-helm upgrade --install my-sumo sumologic/sumologic   --set sumologic.accessId="${ACCESS_ID}"   --set sumologic.accessKey="${ACCESS_KEY}"   --set sumologic.clusterName="keptn-sumo"
+helm upgrade --install my-sumo sumologic/sumologic   --set sumologic.accessId="${ACCESS_ID}"   --set sumologic.accessKey="${ACCESS_KEY}"   --set sumologic.clusterName="keptn-sumo" --version 2.14.1
 
 
 # Install sumologic-service integration for Keptn
