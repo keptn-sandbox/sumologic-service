@@ -145,11 +145,13 @@ func processKeptnCloudEvent(ctx context.Context, event cloudevents.Event) error 
 
 		return HandleGetSliTriggeredEvent(myKeptn, event, eventData)
 
-	case keptnv2.GetTriggeredEventType(keptnv2.ConfigureMonitoringTaskName): // sh.keptn.event.configure-monitoring.triggered
+	// sh.keptn.event.monitoring.configure is converted to just configure-monitoring before this switch case is executed
+	case keptnv2.ConfigureMonitoringTaskName:
 		log.Printf("Processing configure-monitoring.Triggered Event")
 
 		eventData := &keptnv2.ConfigureMonitoringTriggeredEventData{}
 		parseKeptnCloudEventPayload(event, eventData)
+		event.SetType(keptnv2.GetTriggeredEventType(keptnv2.ConfigureMonitoringTaskName))
 
 		return HandleConfigureMonitoringTriggeredEvent(myKeptn, event, eventData)
 	}

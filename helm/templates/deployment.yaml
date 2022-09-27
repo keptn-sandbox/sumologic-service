@@ -54,6 +54,8 @@ spec:
             value: "{{ .Values.sumologicservice.region }}"
           - name: LOG_LEVEL
             value: "{{ .Values.sumologicservice.logLevel }}"
+          - name: SLEEP_BEFORE_API_IN_SECONDS
+            value: "{{ .Values.sumologicservice.sleepBeforeAPIInSeconds }}"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
         - name: distributor

@@ -15,6 +15,7 @@ sumologicservice:
   existingSecret: "" # If you want to use existing Secret in the cluster
   region: us1
   logLevel: "info"
+  sleepBeforeAPIInSeconds: "120"
 
 distributor:
   stageFilter: ""                            # Sets the stage this helm service belongs to
