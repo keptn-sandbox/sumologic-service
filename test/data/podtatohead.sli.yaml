@@ -1,0 +1,4 @@
+---
+spec_version: '1.0'
+indicators:
+  cpu_usage: "metric=container_cpu_usage_seconds_total service=$SERVICE | quantize to $DURATION using avg"

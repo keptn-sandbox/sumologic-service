@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ regexReplaceAll "\\."  .Values.name "-" }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: podtatoserver
+  template:
+    metadata:
+      labels:
+        app: podtatoserver
+        app.kubernetes.io/version: {{ .Chart.Version }}
+    spec:
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: server
+          image: "{{ .Values.image }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9000
+          env:
+            - name: PORT
+              value: "9000"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: "metadata.name"
+            - name: DEPLOYMENT_NAME
+              value: "{{ .Values.keptn.deployment }}"
+            - name: CONTAINER_IMAGE
+              value: "{{ .Values.image }}"
+            - name: KEPTN_PROJECT
+              value: "{{ .Values.keptn.project }}"
+            - name: KEPTN_STAGE
+              value: "{{ .Values.keptn.stage }}"
+            - name: KEPTN_SERVICE
+              value: "{{ .Values.keptn.service }}"
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "1m"
+            limits:
+              memory: "64Mi"
+              cpu: "1m"
