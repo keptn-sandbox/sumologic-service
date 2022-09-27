@@ -1,0 +1,4 @@
+image: ghcr.io/podtato-head/podtatoserver:v0.1.2
+replicaCount: 1
+useDynatraceVersion: true
+name: "podtatoserver0.15.0-r1-0123456789-t1"
