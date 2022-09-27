@@ -11,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/keptn-sandbox/sumologic-service/pkg/utils"
+	logger "github.com/sirupsen/logrus"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -34,7 +35,7 @@ func init() {
 	var err error
 	sleepBeforeAPIInSeconds, err = strconv.Atoi(strings.TrimSpace(os.Getenv("SLEEP_BEFORE_API_IN_SECONDS")))
 	if err != nil || sleepBeforeAPIInSeconds < defaultSleepBeforeAPIInSeconds {
-		log.Infof("defaulting SLEEP_BEFORE_API_IN_SECONDS to 30s because it was set to '%v' which is less than the min allowed value of 30s", sleepBeforeAPIInSeconds)
+		logger.Infof("defaulting SLEEP_BEFORE_API_IN_SECONDS to 60s because it was set to '%v' which is less than the min allowed value of 60s", sleepBeforeAPIInSeconds)
 		sleepBeforeAPIInSeconds = defaultSleepBeforeAPIInSeconds
 	}
 }
@@ -46,8 +47,8 @@ func init() {
 
 // GenericLogKeptnCloudEventHandler is a generic handler for Keptn Cloud Events that logs the CloudEvent
 func GenericLogKeptnCloudEventHandler(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data interface{}) error {
-	log.Printf("Handling %s Event: %s", incomingEvent.Type(), incomingEvent.Context.GetID())
-	log.Printf("CloudEvent %T: %v", data, data)
+	logger.Printf("Handling %s Event: %s", incomingEvent.Type(), incomingEvent.Context.GetID())
+	logger.Printf("CloudEvent %T: %v", data, data)
 
 	return nil
 }
@@ -55,7 +56,7 @@ func GenericLogKeptnCloudEventHandler(myKeptn *keptnv2.Keptn, incomingEvent clou
 // OldHandleConfigureMonitoringEvent handles old configure-monitoring events
 // TODO: add in your handler code
 func OldHandleConfigureMonitoringEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptn.ConfigureMonitoringEventData) error {
-	log.Printf("Handling old configure-monitoring Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling old configure-monitoring Event: %s", incomingEvent.Context.GetID())
 
 	return nil
 }
@@ -63,7 +64,37 @@ func OldHandleConfigureMonitoringEvent(myKeptn *keptnv2.Keptn, incomingEvent clo
 // HandleConfigureMonitoringTriggeredEvent handles configure-monitoring.triggered events
 // TODO: add in your handler code
 func HandleConfigureMonitoringTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.ConfigureMonitoringTriggeredEventData) error {
-	log.Printf("Handling configure-monitoring.triggered Event: %s", incomingEvent.Context.GetID())
+	var shkeptncontext string
+	_ = incomingEvent.Context.ExtensionAs("shkeptncontext", &shkeptncontext)
+	configureLogger(incomingEvent.Context.GetID(), shkeptncontext)
+
+	logger.Infof("Handling configure-monitoring.triggered Event: %s", incomingEvent.Context.GetID())
+
+	_, err := myKeptn.SendTaskStartedEvent(data, ServiceName)
+	if err != nil {
+		logger.Errorf("err when sending task started the event: %v", err)
+		return err
+	}
+
+	configureMonitoringFinishedEventData := &keptnv2.ConfigureMonitoringFinishedEventData{
+		EventData: keptnv2.EventData{
+			Status:  keptnv2.StatusSucceeded,
+			Result:  keptnv2.ResultPass,
+			Project: data.Project,
+			Stage:   data.Service,
+			Service: data.Service,
+			Message: "Finished configuring monitoring",
+		},
+	}
+
+	logger.Debugf("Configure Monitoring finished event: %v", *configureMonitoringFinishedEventData)
+
+	_, err = myKeptn.SendTaskFinishedEvent(configureMonitoringFinishedEventData, ServiceName)
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to send task finished CloudEvent (%s), aborting...", err.Error())
+		logger.Error(errMsg)
+		return err
+	}
 
 	return nil
 }
@@ -71,7 +102,7 @@ func HandleConfigureMonitoringTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEve
 // HandleDeploymentTriggeredEvent handles deployment.triggered events
 // TODO: add in your handler code
 func HandleDeploymentTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.DeploymentTriggeredEventData) error {
-	log.Printf("Handling deployment.triggered Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling deployment.triggered Event: %s", incomingEvent.Context.GetID())
 
 	return nil
 }
@@ -79,7 +110,7 @@ func HandleDeploymentTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloude
 // HandleTestTriggeredEvent handles test.triggered events
 // TODO: add in your handler code
 func HandleTestTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.TestTriggeredEventData) error {
-	log.Printf("Handling test.triggered Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling test.triggered Event: %s", incomingEvent.Context.GetID())
 
 	return nil
 }
@@ -87,7 +118,7 @@ func HandleTestTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.
 // HandleApprovalTriggeredEvent handles approval.triggered events
 // TODO: add in your handler code
 func HandleApprovalTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.ApprovalTriggeredEventData) error {
-	log.Printf("Handling approval.triggered Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling approval.triggered Event: %s", incomingEvent.Context.GetID())
 
 	return nil
 }
@@ -95,7 +126,7 @@ func HandleApprovalTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudeve
 // HandleEvaluationTriggeredEvent handles evaluation.triggered events
 // TODO: add in your handler code
 func HandleEvaluationTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.EvaluationTriggeredEventData) error {
-	log.Printf("Handling evaluation.triggered Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling evaluation.triggered Event: %s", incomingEvent.Context.GetID())
 
 	return nil
 }
@@ -103,7 +134,7 @@ func HandleEvaluationTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloude
 // HandleReleaseTriggeredEvent handles release.triggered events
 // TODO: add in your handler code
 func HandleReleaseTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.ReleaseTriggeredEventData) error {
-	log.Printf("Handling release.triggered Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling release.triggered Event: %s", incomingEvent.Context.GetID())
 
 	return nil
 }
@@ -112,12 +143,12 @@ func HandleReleaseTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudeven
 // This function acts as an example showing how to handle get-sli events by sending .started and .finished events
 // TODO: adapt handler code to your needs
 func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.GetSLITriggeredEventData) error {
-	log.Printf("Handling get-sli.triggered Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling get-sli.triggered Event: %s", incomingEvent.Context.GetID())
 
 	// Step 1 - Do we need to do something?
 	// Lets make sure we are only processing an event that really belongs to our SLI Provider
 	if data.GetSLI.SLIProvider != "sumologic" {
-		log.Printf("Not handling get-sli event as it is meant for %s", data.GetSLI.SLIProvider)
+		logger.Printf("Not handling get-sli event as it is meant for %s", data.GetSLI.SLIProvider)
 		return nil
 	}
 
@@ -127,18 +158,18 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to send task started CloudEvent (%s), aborting...", err.Error())
-		log.Println(errMsg)
+		logger.Println(errMsg)
 		return err
 	}
 
 	start, err := parseUnixTimestamp(data.GetSLI.Start)
 	if err != nil {
-		log.Errorf("unable to parse sli start timestamp: %v", err)
+		logger.Errorf("unable to parse sli start timestamp: %v", err)
 		return err
 	}
 	end, err := parseUnixTimestamp(data.GetSLI.End)
 	if err != nil {
-		log.Errorf("unable to parse sli end timestamp: %v", err)
+		logger.Errorf("unable to parse sli end timestamp: %v", err)
 		return err
 	}
 
@@ -155,14 +186,14 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 	// Get SLI File from sumologic-service subdirectory of the config repo - to add the file use:
 	//   keptn add-resource --project=PROJECT --stage=STAGE --service=SERVICE --resource=my-sli-config.yaml  --resourceUri=sumologic-service/sli.yaml
 	sliConfig, err := myKeptn.GetSLIConfiguration(data.Project, data.Stage, data.Service, sliFile)
-	log.Debugf("SLI config: %v", sliConfig)
+	logger.Debugf("SLI config: %v", sliConfig)
 
 	// FYI you do not need to "fail" if sli.yaml is missing, you can also assume smart defaults like we do
 	// in keptn-contrib/dynatrace-service and keptn-contrib/prometheus-service
 	if err != nil {
 		// failed to fetch sli config file
 		errMsg := fmt.Sprintf("Failed to fetch SLI file %s from config repo: %s", sliFile, err.Error())
-		log.Error(errMsg)
+		logger.Error(errMsg)
 		// send a get-sli.finished event with status=error and result=failed back to Keptn
 
 		_, err = myKeptn.SendTaskFinishedEvent(&keptnv2.EventData{
@@ -207,19 +238,19 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 	for _, indicatorName := range indicators {
 		// Pulling the data from Sumo Logic api immediately gives incorrect data in the api response
 		// we have to wait for some time for the correct data to be reflected in the api response
-		log.Debugf("waiting for %vs so that the metrics data is reflected correctly in the api", sleepBeforeAPIInSeconds)
+		logger.Debugf("waiting for %vs so that the metrics data is reflected correctly in the api", sleepBeforeAPIInSeconds)
 		time.Sleep(time.Second * time.Duration(sleepBeforeAPIInSeconds))
 		query := replaceQueryParameters(data, sliConfig[indicatorName], start, end)
-		log.Debugf("query: %v, from: %v, to: %v", query, start.Unix(), end.Unix())
+		logger.Debugf("query: %v, from: %v, to: %v", query, start.Unix(), end.Unix())
 
 		formattedQuery, quantizeDuration, quantizeRollup, err := processQuery(query)
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 			getSliFinishedEventData.Status = keptnv2.StatusErrored
 			getSliFinishedEventData.Result = keptnv2.ResultFailed
 			_, sendErr := myKeptn.SendTaskFinishedEvent(getSliFinishedEventData, ServiceName)
 			if sendErr != nil {
-				log.Error(sendErr)
+				logger.Error(sendErr)
 			}
 			return err
 		}
@@ -251,14 +282,14 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 				},
 			},
 		}
-		log.Debugf("metrics query request: %v", req)
-		log.Debugf("formattedQuery: %v", formattedQuery)
+		logger.Debugf("metrics query request: %v", req)
+		logger.Debugf("formattedQuery: %v", formattedQuery)
 		mRes, hRes, err := client.RunMetricsQueries(req)
-		log.Debugf("metrics query response: %v", mRes)
-		log.Debugf("metric value from sumologic: %v", mRes.QueryResult[0].TimeSeriesList.TimeSeries[0].Points.Values[0])
-		log.Debugf("http response: %v", *hRes)
+		logger.Debugf("metrics query response: %v", mRes)
+		logger.Debugf("metric value from sumologic: %v", mRes.QueryResult[0].TimeSeriesList.TimeSeries[0].Points.Values[0])
+		logger.Debugf("http response: %v", *hRes)
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 			getSliFinishedEventData.EventData.Status = keptnv2.StatusErrored
 			getSliFinishedEventData.EventData.Result = keptnv2.ResultFailed
 		} else {
@@ -277,7 +308,7 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to send task finished CloudEvent (%s), aborting...", err.Error())
-		log.Println(errMsg)
+		logger.Println(errMsg)
 		return err
 	}
 
@@ -289,7 +320,7 @@ func HandleGetSliTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 // - ProblemEventType = "sh.keptn.events.problem"
 // TODO: add in your handler code
 func HandleProblemEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptn.ProblemEventData) error {
-	log.Printf("Handling Problem Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Handling Problem Event: %s", incomingEvent.Context.GetID())
 
 	// Deprecated since Keptn 0.7.0 - use the HandleActionTriggeredEvent instead
 
@@ -299,8 +330,8 @@ func HandleProblemEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event,
 // HandleActionTriggeredEvent handles action.triggered events
 // TODO: add in your handler code
 func HandleActionTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevents.Event, data *keptnv2.ActionTriggeredEventData) error {
-	log.Printf("Handling Action Triggered Event: %s", incomingEvent.Context.GetID())
-	log.Printf("Action=%s\n", data.Action.Action)
+	logger.Printf("Handling Action Triggered Event: %s", incomingEvent.Context.GetID())
+	logger.Printf("Action=%s\n", data.Action.Action)
 
 	// check if action is supported
 	if data.Action.Action == "action-xyz" {
@@ -324,7 +355,7 @@ func HandleActionTriggeredEvent(myKeptn *keptnv2.Keptn, incomingEvent cloudevent
 		}, ServiceName)
 
 	} else {
-		log.Printf("Retrieved unknown action %s, skipping...", data.Action.Action)
+		logger.Printf("Retrieved unknown action %s, skipping...", data.Action.Action)
 		return nil
 	}
 	return nil
@@ -404,4 +435,24 @@ func processQuery(query string) (string, int64, string, error) {
 	c := cases.Title(language.English)
 
 	return formattedQuery, quantizeVal.Milliseconds(), c.String(submatches[2]), nil
+}
+
+func configureLogger(eventID, keptnContext string) {
+	logger.SetFormatter(&utils.Formatter{
+		Fields: logger.Fields{
+			"service":      "sumologic-service",
+			"eventId":      eventID,
+			"keptnContext": keptnContext,
+		},
+		BuiltinFormatter: &logger.TextFormatter{},
+	})
+
+	if os.Getenv(envVarLogLevel) != "" {
+		logLevel, err := logger.ParseLevel(os.Getenv(envVarLogLevel))
+		if err != nil {
+			logger.WithError(err).Error("could not parse log level provided by 'LOG_LEVEL' env var")
+		} else {
+			logger.SetLevel(logLevel)
+		}
+	}
 }
